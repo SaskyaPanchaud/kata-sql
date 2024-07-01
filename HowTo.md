@@ -3,11 +3,6 @@
 Ce fichier permet de consigner et documenter les étapes que vous avez suivies
 pour répondre aux demandes du [README.md](README.md).
 
-<!-- 
-Note: de manière générale vous devez remplacer toutes les requêtes SQL,
-les `XXX`, `NUMBER`, `TEXT` ou `NAME`.
--->
-
 ## Mise en place
 
 <!-- 
@@ -19,110 +14,107 @@ vous sembler utiles dans le but qu'une autre personne puisse **reproduire**
 votre démarche.
 -->
 
-Voici les étapes que j'ai suivies pour installer XXX, créer une base de données
-et y importer les tables :
-  1. ...
-  1. ...
-  1. ...
-  1. ...
+FIXME : Pas très clair cette partie (place de DBeaver là dedans ?)...
 
-J'ai choisi d'utiliser XXX comme client de base de données.
+J'ai créé un *docker-compose.yml* pour lancer mysql et phpmyadmin puis j'ai importé les trois fichier *.sql* via l'interface de phpmyadmin.
 
-J'ai généré le schéma avec XXX:
+Phpmyadmin a généré le schéma.
 
-![Mon MLD](schema.jpg "Mon MLD généré avec XXX")
+![Mon MLD](schema.jpg "Mon MLD généré avec phpmyadmin")
 
 ## Informations à récolter
 
 ### Générales
 
-1. La table `people` contient `NUMBER` personnes, ma requête est :  
+1. La table `people` contient 410 personnes, ma requête est :
   ```sql
-  SELECT somecolumns FROM sometable [...];
+  SELECT count(id) as nb_pers FROM people;
   ```
-1. Cette requête permet de trouver l'email de la personne dont le nom de
-   famille est "Warren" :
+2. Cette requête permet de trouver l'email de la personne dont le nom de
+   famille est Warren :
   ```sql
-  SELECT somecolumns FROM sometable [...];
+  SELECT email FROM people WHERE lastname = "Warren";
   ```
-1. La table `people` est triée par nom de famille en ordre croissant, ma requête 
-   est :  
+3. La table `people` est triée par nom de famille en ordre croissant, ma requête 
+   est :
   ```sql
-  SELECT somecolumns FROM sometable [...];
+  SELECT * FROM people ORDER BY lastname;
   ```
-1. Les 5 premières entrées de la table `people` triée par nom de famille en 
-   ordre croissant sont :  
+4. Les 5 premières entrées de la table `people` triée par nom de famille en 
+   ordre croissant sont :
   ```sql
-  SELECT somecolumns FROM sometable [...];
+  SELECT * FROM people ORDER BY lastname LIMIT 5;
   ```
-1. Je trouve toutes les personnes dont le nom ou le prénom contient `ojo`, ma  
-   requête est :  
+5. Je trouve toutes les personnes dont le nom ou le prénom contient `ojo`, ma  
+   requête est :
   ```sql
-  SELECT somecolumns FROM sometable [...];
+  SELECT * FROM people WHERE firstname LIKE '%ojo%' OR lastname LIKE '%ojo%';
   ```
-1. Les 5 personnes les plus jeunes sont obtenues avec cette requête :  
+6. Les 5 personnes les plus jeunes sont obtenues avec cette requête :
   ```sql
-  SELECT somecolumns FROM sometable [...];
+  SELECT * FROM people ORDER BY birthdate DESC LIMIT 5;
   ```
-1. Les 5 personnes les plus agées sont obtenues avec cette requête :  
+6. Les 5 personnes les plus agées sont obtenues avec cette requête :
   ```sql
-  SELECT somecolumns FROM sometable [...];
+  SELECT * FROM people ORDER BY birthdate LIMIT 5;
   ```
-1. La requête suivante permet de trouver l'age (en année) de chaque personne :  
+7. La requête suivante permet de trouver l'age (en année) de chaque personne :
   ```sql
-  SELECT somecolumns FROM sometable [...];
+  SELECT *,  FLOOR(DATEDIFF(CURRENT_DATE, birthdate) / 365) AS age FROM people ORDER BY age;
   ```
-1. La moyenne d'age (en année) est `NUMBER`, ma requête est :  
+8. La moyenne d'age (en année) est 30, ma requête est :
   ```sql
-  SELECT somecolumns FROM sometable [...];
+  SELECT ROUND(AVG(FLOOR(DATEDIFF(CURRENT_DATE, birthdate) / 365)), 2) AS moy_age FROM people;
   ```
-1. Le prénom le plus long est `TEXT`, ma requête est :  
+9. Le prénom le plus long est Clementine, ma requête est :
   ```sql
-  SELECT somecolumns FROM sometable [...];
+  SELECT *, LENGTH(firstname) AS long_firstname FROM people WHERE LENGTH(firstname) = (SELECT MAX(LENGTH(firstname)) FROM people);
   ```
-1. Le nom de famille le plus long est `TEXT`, ma requête est:  
+9. Le nom de famille le plus long est Christensen, ma requête est:
   ```sql
-  SELECT somecolumns FROM sometable [...];
+  SELECT *, LENGTH(lastname) AS long_lastname FROM people WHERE LENGTH(lastname) = (SELECT MAX(LENGTH(lastname)) FROM people);
   ```
-1. La plus longue paire "nom + prénom" est `TEXT`, ma requête est :  
+10. Les plus longues paires "nom + prénom" sont Wallace Christensen et Cheyenne Pennington, ma requête est :
   ```sql
-  SELECT somecolumns FROM sometable [...];
+  SELECT *, (LENGTH(firstname) + LENGTH(lastname)) AS long_firstname_lastname FROM people WHERE (LENGTH(firstname) + LENGTH(lastname)) = (SELECT MAX((LENGTH(firstname) + LENGTH(lastname))) FROM people);
   ```
-1. La table `people` contient `NUMBER` doublons, ma requête est :  
+11. La table `people` contient 0 doublon, ma requête est :
   ```sql
-  SELECT somecolumns FROM sometable [...];
+  SELECT count(DISTINCT id) as nb_pers FROM people;
   ```
 
 ### Invitations
 
-1. Pour lister tous les membres de plus de 18 ans :  
+1. Pour lister tous les membres de plus de 18 ans :
   ```sql
-  SELECT somecolumns FROM sometable [...];
+  SELECT * FROM people WHERE (DATEDIFF(CURRENT_DATE, birthdate) / 365) > 18;
   ```
-1. Pour lister tous les membres de plus de 18 ans et de moins de 60 ans :  
+1. Pour lister tous les membres de plus de 18 ans et de moins de 60 ans :
   ```sql
-  SELECT somecolumns FROM sometable [...];
+  SELECT * FROM people WHERE (DATEDIFF(CURRENT_DATE, birthdate) / 365) BETWEEN 18 AND 60;
   ```
 1. Pour lister tous les membres de plus de 18 ans, de moins de 60 ans et qui 
-   une addresse email valide :  
+   une addresse email valide :
   ```sql
-  SELECT somecolumns FROM sometable [...];
+  SELECT * FROM people WHERE ((DATEDIFF(CURRENT_DATE, birthdate) / 365) BETWEEN 18 AND 60) AND (email LIKE '%@%.%');
   ```
-1. Pour ajoutez une colonne `age` dans le résultat de la requête :  
+2. Pour ajoutez une colonne `age` dans le résultat de la requête :
   ```sql
-  SELECT somecolumns FROM sometable [...];
+  SELECT *, FLOOR(DATEDIFF(CURRENT_DATE, birthdate) / 365) AS age FROM people WHERE (FLOOR(DATEDIFF(CURRENT_DATE, birthdate) / 365) BETWEEN 18 AND 60) AND (email LIKE '%@%.%');
   ```
-1. Pour générer un champs contenant `Prénom Nom <email@provider.com>;` :  
+3. Pour générer un champs contenant `Prénom Nom <email@provider.com>;` :
   ```sql
-  SELECT somecolumns FROM sometable [...];
+  SELECT *, FLOOR(DATEDIFF(CURRENT_DATE, birthdate) / 365) AS age, CONCAT(firstname, " ", lastname, " ", email) AS liste FROM people WHERE (FLOOR(DATEDIFF(CURRENT_DATE, birthdate) / 365) BETWEEN 18 AND 60) AND (email LIKE '%@%.%');
   ```
-1. Avec cette requête :  
+4. Avec cette requête :  
   ```sql
-  SELECT somecolumns FROM sometable [...];
+  SELECT COUNT(*) FROM people WHERE email LIKE '%@%.ch';
   ```  
-  je peux estimer que `NUMBER` personnes habitent en Suisse.
+  je peux estimer que 70 personnes habitent en Suisse.
 
 ### Countries
+
+FIXME : Pas compris la consigne...
 
 1. La requête qui permet d'obtenir la liste d'options sous la forme :  
    `<option value="XXX">XXX</option>` est :  
@@ -137,49 +129,58 @@ J'ai généré le schéma avec XXX:
 
 ### Jointure
 
-1. Avec cette requête :  
+1. Avec cette requête :
   ```sql
-  SELECT somecolumns FROM sometable [...];
+  SELECT people.* FROM people LEFT JOIN countries_people ON people.id = countries_people.idperson LEFT JOIN countries ON countries_people.idcountry = countries.id WHERE countries.name_fr = 'Suisse';
   ```    
-   je sais que `NUMBER` personnes habitent en Suisse.
-1. Avec cette requête :  
+   je sais que 371 personnes habitent en Suisse.
+
+2. Avec cette requête :
   ```sql
-  SELECT somecolumns FROM sometable [...];
+  SELECT people.* FROM people LEFT JOIN countries_people ON people.id = countries_people.idperson LEFT JOIN countries ON countries_people.idcountry = countries.id WHERE countries.name_fr <> 'Suisse';
   ```  
-   je sais que `NUMBER` personnes n'habitent pas en Suisse.
-1. Avec cette requête :  
+   je sais que 43 personnes n'habitent pas en Suisse.
+
+3. Avec cette requête :
   ```sql
-  SELECT somecolumns FROM sometable [...];
+  SELECT people.lastname, people.firstname FROM people LEFT JOIN countries_people ON people.id = countries_people.idperson LEFT JOIN countries ON countries_people.idcountry = countries.id WHERE countries.name_fr IN ('France', 'Allemagne', 'Italie', 'Autriche', 'Liechtenstein');
   ```  
-  je liste (nom & prénom) les membres habitants de France, Allemagne, Italie,   Autriche et Lischenchtein.
-1. Cette requête :  
+  je liste (nom & prénom) les membres habitants en France, Allemagne, Italie, Autriche et Liechtenstein.
+
+4. Cette requête :
   ```sql
-  SELECT somecolumns FROM sometable [...];
+  SELECT c.id, c.name_fr, (SELECT COUNT(people.id) FROM people LEFT JOIN countries_people ON people.id = countries_people.idperson WHERE countries_people.idcountry = c.id) AS nb_pers FROM countries AS c ORDER BY c.name_fr;
   ```  
    permet de compter combien il y a de personnes par pays.
-1. Cette requête :  
+
+5. Cette requête :
   ```sql
-  SELECT somecolumns FROM sometable [...];
+  SELECT c.id, c.name_fr FROM countries AS c WHERE (SELECT COUNT(people.id) FROM people LEFT JOIN countries_people ON people.id = countries_people.idperson WHERE countries_people.idcountry = c.id) = 0 ORDER BY c.name_fr;
   ```  
   liste les pays qui ne possèdent pas de personnes.
-1. En exécutant cette requête :  
+
+6. En exécutant cette requête :
   ```sql
-  SELECT somecolumns FROM sometable [...];
+  SELECT idperson, people.* FROM countries_people LEFT JOIN people ON countries_people.idperson = people.id GROUP BY idperson HAVING COUNT(idperson) > 1;
   ```  
-   je sais que `NAME`, `NAME` et `NAME` sont liés à plusieurs pays.
-1. En exécutant cette requête :  
+   je sais que Dai Roth et Minerva Chaney sont liés à plusieurs pays.
+
+7. En exécutant cette requête :
   ```sql
-  SELECT somecolumns FROM sometable [...];
+  SELECT * FROM people WHERE id NOT IN (SELECT people.id FROM countries_people INNER JOIN people ON countries_people.idperson = people.id);
   ```  
-  je sais que `TEXT` parce que `TEXT`.
-1. De la manière suivante :  
+  je sais que toutes les personnes de la table people sont représentées au moins une fois dans la table countries_people parce que la requête ci-dessus ne retourne aucun résultat. Il n'y a donc personne qui est lié à aucun pays.
+
+8. De la manière suivante :
   ```sql
-  SELECT somecolumns FROM sometable [...];
+  SELECT c.id, c.name_fr, ROUND(((SELECT COUNT(people.id) FROM people LEFT JOIN countries_people ON people.id = countries_people.idperson WHERE countries_people.idcountry = c.id) / (SELECT COUNT(id) FROM people) * 100), 2) AS pourcentage FROM countries AS c ORDER BY c.name_fr;
   ```  
   nous pouvons afficher le pourcentage de personnes par pays.
 
 
 ### Procédures
+
+TODO
 
 1. Cette requête permet d'extraire le `tld` de l'adresse email et de le lier à la table `countries` :  
   ```sql
