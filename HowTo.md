@@ -180,50 +180,117 @@ FIXME : Pas compris la consigne...
 
 ### Procédures
 
-TODO
-
-1. Cette requête permet d'extraire le `tld` de l'adresse email et de le lier à la table `countries` :  
+FIXME : Avec cette requête : 
   ```sql
-  SELECT somecolumns FROM sometable [...];
+  SELECT countries.name_en, people.email, countries.tld FROM people LEFT JOIN countries_people ON people.id = countries_people.idperson LEFT JOIN countries ON countries_people.idcountry = countries.id;
   ```  
-1. Pour ajouter une chaine si la jointure ne retourne rien, j'ai procédé de la manière suivante :  
-  `STRING`
-1. Avec `STRING`, nous pouvons partager le mécanisme qui extrait le `tld`.
+  , on se rend compte que la corrélation entre le tld et le pays effectif de la personne est faible.
+
+FIXME : Requête correcte ou non :
   ```sql
-  SELECT somecolumns FROM sometable [...];
+  SELECT DISTINCT countries.name_en, REGEXP_SUBSTR(people.email, '\.[^.]+$') AS tld_email, countries.tld FROM people LEFT JOIN countries ON REGEXP_SUBSTR(email, '\.[^.]+$') = countries.tld;
+  ```  
+  ?
+
+1. Cette requête permet d'extraire le `tld` de l'adresse email et de le lier à la table `countries` :
+  ```sql
+  SELECT countries.name_en, people.email, REGEXP_SUBSTR(people.email, '\.[^.]+$') AS tld_email, countries.tld FROM people LEFT JOIN countries ON REGEXP_SUBSTR(email, '\.[^.]+$') = countries.tld;
+  ```  
+2. Pour ajouter une chaine si la jointure ne retourne rien, j'ai procédé de la manière suivante : j'ai ajouté `IFNULL(countries.name_en, 'Country Unknown')`.  
+3. Avec une fonction (voir ci-dessous), nous pouvons partager le mécanisme qui extrait le `tld`.
+  ```sql
+  DELIMITER //
+
+  CREATE FUNCTION GetTldFromEmail (email VARCHAR(255))
+  RETURNS VARCHAR(10)
+  DETERMINISTIC
+  BEGIN
+      DECLARE tld VARCHAR(10);
+      SET tld = REGEXP_SUBSTR(email, '\\.[^.]+$');
+      RETURN tld;
+  END //
   ```
+  ```sql
+  SELECT *, GetTldFromEmail(email) AS tld FROM people;
+  ```
+
 
 ### Vue SQL
 
-1. J'ai créé une vue bien pratique contenant toutes les infomrations utiles à un humain. Ma requête est:  
+1. J'ai créé une vue bien pratique contenant toutes les infomrations utiles à un humain. Ma requête est:
   ```sql
-  CREATE viewsomething as somequery [...];
+  CREATE VIEW HelloDojo AS
+  SELECT people.*,
+        FLOOR(DATEDIFF(CURRENT_DATE, birthdate) / 365) AS age,
+        CONCAT(CONCAT(UCASE(LEFT(LOWER(people.firstname), 1)), LCASE(SUBSTRING(LOWER(people.firstname), 2))), ' ', CONCAT(UCASE(LEFT(LOWER(people.lastname), 1)), LCASE(SUBSTRING(LOWER(people.lastname), 2)))) AS prenom_nom,
+        countries.name_fr AS pays
+  FROM people LEFT JOIN countries_people ON people.id = countries_people.idperson
+              LEFT JOIN countries ON countries_people.idcountry = countries.id;
   ```  
-1. Je peux exporter ma vue au format CSV avec la requête :
+2. Je peux exporter ma vue au format CSV avec la requête :
   ```sql
-  SELECT somecolumns FROM sometable [...];
+  (
+  SELECT 'id', 'prenom', 'nom', 'email', 'date_naissance', 'age', 'prenom_nom', 'pays'
+  UNION ALL
+  SELECT id AS id, firstname AS prenom, lastname AS nom, email AS email, birthdate AS date_naissance, age AS age, prenom_nom AS prenom_nom, pays AS pays
+  FROM HelloDojo
+  )
+  INTO OUTFILE '/var/lib/mysql-files/view_helloDojo.csv'
+  FIELDS TERMINATED BY ','
+  ENCLOSED BY '"'
+  LINES TERMINATED BY '\n';
   ```
 
 ### Finances
 
+FIXME : Pas trop compris le but de cette nouvelle table...
+
 1. J'ai créé une table pour les finances. Ma requête est:  
   ```sql
-  CREATE sometable [...];
+  CREATE TABLE expenses (
+      id INT NOT NULL,
+      id_pers INT NOT NULL,
+      date_exp DATE,
+      type VARCHAR(255),
+      amount FLOAT(10, 2),
+      PRIMARY KEY (id),
+      CONSTRAINT fk_id_pers FOREIGN KEY (id_pers)  REFERENCES people (id) ON DELETE CASCADE ON UPDATE CASCADE
+  );
   ```
-1. J'ai ajouté des données de test avec la reuêtes SQL suivante :  
-   ```sql
-   INSERT INTO expenses [...];
-   ```
-1. J'ai modifié la vue en y ajoutant les finances. Ma requête est:  
+2. J'ai ajouté des données de test avec la reuêtes SQL suivante :  
   ```sql
-  UPDATE someview [...];
+  INSERT INTO expenses VALUES(12345, 100, CURRENT_DATE, entree, 20);
+  INSERT INTO expenses VALUES(12346, 101, CURRENT_DATE, 'soft', 5);
+  INSERT INTO expenses VALUES(12347, 112, '2024-05-12', 'entree', 50);
+  INSERT INTO expenses VALUES(12348, 130, '2024-08-05', 'alcool', 150);
+  INSERT INTO expenses VALUES(12349, 130, CURRENT_DATE, 'entree', 20);
+  INSERT INTO expenses VALUES(12350, 130, CURRENT_DATE, 'nourriture', 200);
+  ```
+3. J'ai modifié la vue en y ajoutant les finances. Ma requête est:  
+  ```sql
+  ALTER VIEW HelloDojo AS
+  SELECT people.*,
+        FLOOR(DATEDIFF(CURRENT_DATE, birthdate) / 365) AS age,
+        CONCAT(CONCAT(UCASE(LEFT(LOWER(people.firstname), 1)), LCASE(SUBSTRING(LOWER(people.firstname), 2))), ' ', CONCAT(UCASE(LEFT(LOWER(people.lastname), 1)), LCASE(SUBSTRING(LOWER(people.lastname), 2)))) AS prenom_nom,
+        countries.name_fr AS pays,
+        IFNULL(SUM(expenses.amount), 0.00) AS total_depenses
+  FROM people LEFT JOIN countries_people ON people.id = countries_people.idperson
+              LEFT JOIN countries ON countries_people.idcountry = countries.id
+              LEFT JOIN expenses ON countries_people.idperson = expenses.id_pers
+  GROUP BY people.id, people.firstname, people.lastname, people.email, people.birthdate, age, prenom_nom, pays
   ```
 
 ### Intégrité référentielle
-(WIP)
-1. Pour ajouter les clés étrangères, j'ai utilisé les requêtes suivantes :  
+
+1. Pour ajouter les clés étrangères (déjà présentes), j'ai utilisé les requêtes suivantes :  
   ```sql
-  ALTER sometable [...];
-  ALTER sometable [...];
+  ALTER TABLE countries_people ADD FOREIGN KEY (idcountry) REFERENCES countries(id);
+  ALTER TABLE countries_people ADD FOREIGN KEY (idperson) REFERENCES people(id);
   ```
-1. J'ai du modifier les données de la table `NAME` parce que XXX.
+FIXME : Pas sûre de la réponse...
+
+2. Les champs idcountry et idperson de la table countries_people sont uniques (clé primaire), il n'y a donc pas de doublon dans cette table. Aucune donnée n'a dû être modifiée nulle part sachant que les clés étrangères se basent sur des champs eux aussi uniques dans les tables sources.
+
+FIXME : Pas compris la question...
+
+3. Pourquoi est-il nécessaire d'altérer les données ?
