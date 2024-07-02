@@ -5,28 +5,17 @@ pour répondre aux demandes du [README.md](README.md).
 
 ## Mise en place
 
-<!-- 
-Vous devez expliquer ici quelle solution technique vous avez choisie, comment
-il faut procéder pour l'installer, quelles sont les commandes ou les étapes à
-suivre pour importer les tables, quel outil vous avez utilisé pour créer le
-schéma entité-relation de la base, et toutes autres informations qui pourraient
-vous sembler utiles dans le but qu'une autre personne puisse **reproduire** 
-votre démarche.
--->
+J'ai choisi d'utiliser les images mysql et phpmyadmin de Docker. J'ai créé un *docker-compose.yml* (voir repo) ainsi qu'un *.env*. J'ai utilisé la commande `docker compose up`pour lancer mes containers. J'ai importé les 3 fichiers *.sql* manuellement via l'interface de phpmyadmin (possible également de le faire avec un script SQL ou en ligne de commande).
 
-FIXME : Pas très clair cette partie (place de DBeaver là dedans ?)...
+Ci-dessous le schéma généré automatiquement dans phpmyadmin :
 
-J'ai créé un *docker-compose.yml* pour lancer mysql et phpmyadmin puis j'ai importé les trois fichier *.sql* via l'interface de phpmyadmin.
-
-Phpmyadmin a généré le schéma.
-
-![Mon MLD](schema.jpg "Mon MLD généré avec phpmyadmin")
+![MLD](schema.jpg "MLD généré dans phpmyadmin")
 
 ## Informations à récolter
 
 ### Générales
 
-1. La table `people` contient 410 personnes, ma requête est :
+1. La table `people` contient 400 personnes (410 ids mais 10 doublons), ma requête est :
   ```sql
   SELECT count(id) as nb_pers FROM people;
   ```
@@ -54,15 +43,19 @@ Phpmyadmin a généré le schéma.
   ```sql
   SELECT * FROM people ORDER BY birthdate DESC LIMIT 5;
   ```
-6. Les 5 personnes les plus agées sont obtenues avec cette requête :
+6. Les 5 personnes les plus âgées sont obtenues avec cette requête :
   ```sql
   SELECT * FROM people ORDER BY birthdate LIMIT 5;
   ```
-7. La requête suivante permet de trouver l'age (en année) de chaque personne :
+7. La requête suivante permet de trouver l'âge (en année) de chaque personne :
   ```sql
   SELECT *,  FLOOR(DATEDIFF(CURRENT_DATE, birthdate) / 365) AS age FROM people ORDER BY age;
   ```
-8. La moyenne d'age (en année) est 30, ma requête est :
+  Une alternative est :
+  ```sql
+  SELECT *, (YEAR(NOW()) - YEAR(birthdate)) as age FROM people;
+  ```
+8. La moyenne d'âge (en année) est 30, ma requête est :
   ```sql
   SELECT ROUND(AVG(FLOOR(DATEDIFF(CURRENT_DATE, birthdate) / 365)), 2) AS moy_age FROM people;
   ```
@@ -74,14 +67,28 @@ Phpmyadmin a généré le schéma.
   ```sql
   SELECT *, LENGTH(lastname) AS long_lastname FROM people WHERE LENGTH(lastname) = (SELECT MAX(LENGTH(lastname)) FROM people);
   ```
-10. Les plus longues paires "nom + prénom" sont Wallace Christensen et Cheyenne Pennington, ma requête est :
+10. Les plus longues paires "nom + prénom" sont Wallace Christensen et Cheyenne Pennington (18 caractères), ma requête est :
   ```sql
   SELECT *, (LENGTH(firstname) + LENGTH(lastname)) AS long_firstname_lastname FROM people WHERE (LENGTH(firstname) + LENGTH(lastname)) = (SELECT MAX((LENGTH(firstname) + LENGTH(lastname))) FROM people);
   ```
-11. La table `people` contient 0 doublon, ma requête est :
+11. La table `people` contient 10 doublons, ma requête est :
   ```sql
-  SELECT count(DISTINCT id) as nb_pers FROM people;
+  SELECT firstname, lastname, email, birthdate, COUNT(*) AS nb_rep
+  FROM people
+  GROUP BY firstname, lastname, email, birthdate
+  HAVING COUNT(*) > 1;
   ```
+  Avec cette requête, on trouve 11 doublons :
+  ```sql
+  SELECT COUNT(*)-COUNT(DISTINCT(email)) as nb_doublons FROM people;
+  ```
+  FIXME : Il y a 399 emails (2 vides donc pas de personnes utilisant la même adresse email). En comparant sur les emails, on trouve 11 doublons étant donné que l'email vide est considéré comme un doublon puisque 2 fois à vide. Avec la requête suivante, nous trouvons bel et bien 10 doublons :
+  ```sql
+  SELECT DISTINCT p1.firstname, p1.lastname, p1.email, p1.birthdate
+  FROM people AS p1 INNER JOIN people AS p2 ON (p1.email = p2.email AND p1.id <> p2.id)
+  WHERE p1.email <> '';
+  ```
+
 
 ### Invitations
 
@@ -93,7 +100,7 @@ Phpmyadmin a généré le schéma.
   ```sql
   SELECT * FROM people WHERE (DATEDIFF(CURRENT_DATE, birthdate) / 365) BETWEEN 18 AND 60;
   ```
-1. Pour lister tous les membres de plus de 18 ans, de moins de 60 ans et qui 
+1. Pour lister tous les membres de plus de 18 ans, de moins de 60 ans et qui ont
    une addresse email valide :
   ```sql
   SELECT * FROM people WHERE ((DATEDIFF(CURRENT_DATE, birthdate) / 365) BETWEEN 18 AND 60) AND (email LIKE '%@%.%');
@@ -106,76 +113,63 @@ Phpmyadmin a généré le schéma.
   ```sql
   SELECT *, FLOOR(DATEDIFF(CURRENT_DATE, birthdate) / 365) AS age, CONCAT(firstname, " ", lastname, " ", email) AS liste FROM people WHERE (FLOOR(DATEDIFF(CURRENT_DATE, birthdate) / 365) BETWEEN 18 AND 60) AND (email LIKE '%@%.%');
   ```
-4. Avec cette requête :  
+4. Avec cette requête, je peux estimer que 70 personnes habitent en Suisse :
   ```sql
   SELECT COUNT(*) FROM people WHERE email LIKE '%@%.ch';
   ```  
-  je peux estimer que 70 personnes habitent en Suisse.
+
 
 ### Countries
 
-FIXME : Pas compris la consigne...
+FIXME : C'est ça qu'il fallait faire ou toujours pas ?
 
 1. La requête qui permet d'obtenir la liste d'options sous la forme :  
-   `<option value="XXX">XXX</option>` est :  
+   `<option value="XXX">XXX</option>` est :
   ```sql
-  SELECT somecolumns FROM sometable [...];
+  SELECT *, CONCAT('<option value=\"', iso2, '\">', name_fr, '</option>') AS options FROM countries;
   ```
-1. Pour avoir la liste d'options en plusieurs langues, je procède de la manière 
+2. Pour avoir la liste d'options en plusieurs langues, je procède de la manière 
    suivante :  
   ```sql
-  SELECT somecolumns FROM sometable [...];
+  SELECT *, CONCAT('<option value=\"', iso2, '\">', name_fr, '</option>') AS options_fr, CONCAT('<option value=\"', iso2, '\">', name_en, '</option>') AS options_en FROM countries;
   ```
 
 ### Jointure
 
-1. Avec cette requête :
+1. Avec cette requête, je sais que 371 personnes habitent en Suisse :
   ```sql
   SELECT people.* FROM people LEFT JOIN countries_people ON people.id = countries_people.idperson LEFT JOIN countries ON countries_people.idcountry = countries.id WHERE countries.name_fr = 'Suisse';
-  ```    
-   je sais que 371 personnes habitent en Suisse.
-
-2. Avec cette requête :
+  ```  
+2. Avec cette requête, je sais que 43 personnes n'habitent pas en Suisse :
   ```sql
   SELECT people.* FROM people LEFT JOIN countries_people ON people.id = countries_people.idperson LEFT JOIN countries ON countries_people.idcountry = countries.id WHERE countries.name_fr <> 'Suisse';
   ```  
-   je sais que 43 personnes n'habitent pas en Suisse.
-
-3. Avec cette requête :
+3. Avec cette requête, je liste (nom & prénom) les membres habitants en France, Allemagne, Italie, Autriche et Liechtenstein :
   ```sql
   SELECT people.lastname, people.firstname FROM people LEFT JOIN countries_people ON people.id = countries_people.idperson LEFT JOIN countries ON countries_people.idcountry = countries.id WHERE countries.name_fr IN ('France', 'Allemagne', 'Italie', 'Autriche', 'Liechtenstein');
   ```  
-  je liste (nom & prénom) les membres habitants en France, Allemagne, Italie, Autriche et Liechtenstein.
-
-4. Cette requête :
+4. Cette requête permet de compter combien il y a de personnes par pays :
   ```sql
   SELECT c.id, c.name_fr, (SELECT COUNT(people.id) FROM people LEFT JOIN countries_people ON people.id = countries_people.idperson WHERE countries_people.idcountry = c.id) AS nb_pers FROM countries AS c ORDER BY c.name_fr;
   ```  
-   permet de compter combien il y a de personnes par pays.
-
-5. Cette requête :
+5. Cette requête liste les pays qui ne possèdent pas de personnes :
   ```sql
   SELECT c.id, c.name_fr FROM countries AS c WHERE (SELECT COUNT(people.id) FROM people LEFT JOIN countries_people ON people.id = countries_people.idperson WHERE countries_people.idcountry = c.id) = 0 ORDER BY c.name_fr;
   ```  
-  liste les pays qui ne possèdent pas de personnes.
-
-6. En exécutant cette requête :
+6. En exécutant cette requête,je sais que Dai Roth et Minerva Chaney sont liés à plusieurs pays :
   ```sql
   SELECT idperson, people.* FROM countries_people LEFT JOIN people ON countries_people.idperson = people.id GROUP BY idperson HAVING COUNT(idperson) > 1;
   ```  
-   je sais que Dai Roth et Minerva Chaney sont liés à plusieurs pays.
-
 7. En exécutant cette requête :
   ```sql
   SELECT * FROM people WHERE id NOT IN (SELECT people.id FROM countries_people INNER JOIN people ON countries_people.idperson = people.id);
   ```  
   je sais que toutes les personnes de la table people sont représentées au moins une fois dans la table countries_people parce que la requête ci-dessus ne retourne aucun résultat. Il n'y a donc personne qui est lié à aucun pays.
 
-8. De la manière suivante :
+8. De la manière suivante, nous pouvons afficher le pourcentage de personnes par pays :
   ```sql
   SELECT c.id, c.name_fr, ROUND(((SELECT COUNT(people.id) FROM people LEFT JOIN countries_people ON people.id = countries_people.idperson WHERE countries_people.idcountry = c.id) / (SELECT COUNT(id) FROM people) * 100), 2) AS pourcentage FROM countries AS c ORDER BY c.name_fr;
   ```  
-  nous pouvons afficher le pourcentage de personnes par pays.
 
 
 ### Procédures
@@ -217,7 +211,7 @@ FIXME : Requête correcte ou non :
 
 ### Vue SQL
 
-1. J'ai créé une vue bien pratique contenant toutes les infomrations utiles à un humain. Ma requête est:
+1. J'ai créé une vue bien pratique contenant toutes les informations utiles à un humain. Ma requête est:
   ```sql
   CREATE VIEW HelloDojo AS
   SELECT people.*,
@@ -279,6 +273,7 @@ FIXME : Pas trop compris le but de cette nouvelle table...
               LEFT JOIN expenses ON countries_people.idperson = expenses.id_pers
   GROUP BY people.id, people.firstname, people.lastname, people.email, people.birthdate, age, prenom_nom, pays
   ```
+
 
 ### Intégrité référentielle
 
